@@ -1,0 +1,18 @@
+2025-01-30 13:59:59,990 - copy_manager.log - INFO - Skipping C:/Users/ikai0700275/Desktop/rust/task_auto/rename_script/build: already exists.
+2025-01-30 13:59:59,994 - copy_manager.log - INFO - Skipping C:/Users/ikai0700275/Desktop/rust/task_auto/rename_script/dist: already exists.
+2025-01-30 13:59:59,995 - copy_manager.log - INFO - Skipping C:/Users/ikai0700275/Desktop/python_script/prinC: already exists.
+2025-01-30 13:59:59,995 - copy_manager.log - INFO - Copy operation completed.
+2025-01-30 14:01:10,983 - copy_manager.log - INFO - Copying C:/Users/ikai0700275/Desktop/python_script/DIY_modules to C:/Users/ikai0700275/Desktop/python_script/python_script\DIY_modules
+2025-01-30 14:01:11,656 - copy_manager.log - ERROR - Error copying C:/Users/ikai0700275/Desktop/python_script/DIY_modules: リトライ中...
+2025-01-30 14:01:11,688 - copy_manager.log - INFO - Progress: 1/1 (100%)
+2025-01-30 14:01:11,690 - copy_manager.log - INFO - Copying C:/Users/ikai0700275/Desktop/python_script/excel_rename to C:/Users/ikai0700275/Desktop/python_script/python_script\excel_rename
+2025-01-30 14:01:12,226 - copy_manager.log - ERROR - Error copying C:/Users/ikai0700275/Desktop/python_script/excel_rename: リトライ中...
+2025-01-30 14:01:12,250 - copy_manager.log - INFO - Progress: 1/1 (100%)
+2025-01-30 14:01:12,251 - copy_manager.log - INFO - Copying C:/Users/ikai0700275/Desktop/python_script/prinC to C:/Users/ikai0700275/Desktop/python_script/python_script\prinC
+2025-01-30 14:01:12,289 - copy_manager.log - ERROR - Error copying C:/Users/ikai0700275/Desktop/python_script/prinC: リトライ中...
+2025-01-30 14:01:12,319 - copy_manager.log - INFO - Progress: 1/1 (100%)
+2025-01-30 14:01:12,319 - copy_manager.log - INFO - Copy operation completed.
+2025-01-30 14:01:36,749 - copy_manager.log - INFO - Copying C:/Users/ikai0700275/Documents to C:/Users/ikai0700275/Desktop/python_script/python_script\Documents
+2025-01-30 14:01:55,728 - copy_manager.log - ERROR - Error copying C:/Users/ikai0700275/Documents: リトライ中...
+2025-01-30 14:01:56,218 - copy_manager.log - INFO - Progress: 1/1 (100%)
+2025-01-30 14:01:56,218 - copy_manager.log - INFO - Copy operation completed.
