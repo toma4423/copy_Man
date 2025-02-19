@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "copy-man"
+version = "0.4.0"
+description = "Windows用のフォルダコピーツール"
+authors = ["toma"]
+license = "MIT"
+readme = "README.md"
+packages = [
+    { include = "mod" },
+    { include = "cp_man_v4.py" }
+]
+
+[tool.poetry.dependencies]
+python = ">=3.11"
+PyQt6 = "^6.0"
+
+[tool.poetry.scripts]
+cp-man = "cp_man_v4:main"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

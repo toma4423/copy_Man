@@ -6,11 +6,31 @@ logs/
 __pycache__/
 *.pyc
 *.pyo
+.pytest_cache/
+.coverage
+htmlcov/
 
-# 環境ファイル (必要に応じて)
+# 環境ファイル
 .env
 venv/
+.venv/
 
-# OS generated files (必要に応じて)
+# OS generated files
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# Poetry
+poetry.lock
+#*.toml  # pyproject.tomlは必要なので除外しない
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ビルド/配布関連
+dist/
+build/
+*.egg-info/

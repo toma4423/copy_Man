@@ -19,8 +19,8 @@ from PyQt6.QtWidgets import (
     QListWidgetItem,
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from mod.copy_support import CopyManager
-from mod.toma_logger import TomaLogger  # TomaLoggerをインポート
+from mod.copy_support.main import CopyManager
+from mod.toma_logger.logger import TomaLogger
 import concurrent.futures
 
 
