@@ -1,0 +1,16 @@
+# Logs
+logs/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# 環境ファイル (必要に応じて)
+.env
+venv/
+
+# OS generated files (必要に応じて)
+.DS_Store
+Thumbs.db

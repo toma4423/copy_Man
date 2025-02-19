@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QTextEdit,
     QMenu,
+    QListWidgetItem,
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from mod.copy_support import CopyManager
@@ -115,7 +116,7 @@ class DroppableQListWidget(QListWidget):
         self.setAcceptDrops(True)
         self.setDragDropMode(QListWidget.DragDropMode.DragDrop)
         self.setDefaultDropAction(Qt.DropAction.CopyAction)
-        # ドラッグアンドドロップの処理を専用クラスで実装
+        self.existing_items = []  # 追加: 既に存在するアイテムを追跡
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
@@ -127,21 +128,14 @@ class DroppableQListWidget(QListWidget):
 
     def dropEvent(self, event):
         urls = event.mimeData().urls()
-        parent = self.parent()
         for url in urls:
             directory = url.toLocalFile()
             if os.path.isdir(directory):
-                if directory == parent.dest_dir_display.text():
-                    QMessageBox.warning(
-                        self,
-                        "警告",
-                        "コピー先ディレクトリが選択されています。異なるディレクトリを選択してください。",
-                    )
-                    continue
-
-                if directory not in parent.selected_directories:
-                    parent.selected_directories.append(directory)
-                    parent.updateSelectedDirsList()
+                # 既にリストに存在するかチェック (修正)
+                if directory not in self.existing_items:
+                    item = QListWidgetItem(directory)
+                    self.addItem(item)
+                    self.existing_items.append(directory)  # 追加
         event.acceptProposedAction()
 
 
@@ -239,27 +233,9 @@ class DirectoryCopierApp(QWidget):
     def dragEnterEvent(self, event):
         # ドラッグされたデータにURLが含まれているかだけをチェック
         if event.mimeData().hasUrls():
-            event.acceptProposedAction()
-
-    def dropEvent(self, event):
-        urls = event.mimeData().urls()
-        for url in urls:
-            directory = url.toLocalFile()
-            if os.path.isdir(directory):
-                # コピー先ディレクトリとの重複チェック
-                if directory == self.dest_dir_display.text():
-                    QMessageBox.warning(
-                        self,
-                        "警告",
-                        "コピー先ディレクトリが選択されています。異なるディレクトリを選択してください。",
-                    )
-                    continue
-
-                # 既にリストに存在するかチェック
-                if directory not in self.selected_directories:
-                    self.selected_directories.append(directory)
-                    self.updateSelectedDirsList()
-        event.acceptProposedAction()
+            event.accept()  # acceptProposedAction() から accept() に変更
+        else:
+            event.ignore()
 
     def openDirectoryDialog(self):
         # オプションを直接QFileDialog.Optionから設定
