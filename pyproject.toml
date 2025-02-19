@@ -17,6 +17,20 @@ PyQt6 = "^6.0"
 [tool.poetry.scripts]
 cp-man = "cp_man_v4:main"
 
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.4"
+pytest-cov = "^4.0.0"
+pytest-qt = "^4.4.0"
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --tb=short --cov=. --cov-report=html -p no:warnings"
+qt_api = "pyqt6"
+markers = [
+    "gui: marks tests that involve GUI components"
+]
