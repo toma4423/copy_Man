@@ -6,28 +6,39 @@ import xml.dom.minidom
 from logging.handlers import TimedRotatingFileHandler
 
 
-
-
 class TomaLogger:
-    def __init__(self, log_name="application.log", log_dir="logs", level=logging.INFO, log_format="text"):
-        self.logger = logging.getLogger(log_name)
+    def __init__(
+        self,
+        log_name="application.log",
+        log_dir="logs",
+        level=logging.INFO,
+        log_format="text",
+    ):
+        self.logger = logging.getLogger(__name__)
         self.logger.setLevel(level)
-        
-        # ログディレクトリの確認と作成
+        self.log_file = log_name  # テスト用に追加
+
+        # ログディレクトリとファイルのパスを正しく結合
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
-        
+
         # ログのフォーマットを選択
         if log_format == "json":
             formatter = self._get_json_formatter()
         elif log_format == "xml":
             formatter = self._get_xml_formatter()
         else:
-            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            formatter = logging.Formatter(
+                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            )
 
         # ログファイルを日ごとにローテーション (エンコーディング指定)
         file_handler = TimedRotatingFileHandler(
-            os.path.join(log_dir, log_name), when='midnight', interval=1, encoding='utf-8'
+            os.path.join(log_dir, log_name),
+            when="D",
+            interval=1,
+            backupCount=7,
+            encoding="utf-8",
         )
         file_handler.setFormatter(formatter)
         file_handler.setLevel(level)
@@ -43,47 +54,47 @@ class TomaLogger:
 
     def _get_json_formatter(self):
         """JSON形式でログをフォーマットする"""
+
         class JsonFormatter(logging.Formatter):
             def format(self, record):
                 log_record = {
                     "timestamp": self.formatTime(record, self.datefmt),
                     "name": record.name,
                     "level": record.levelname,
-                    "message": record.getMessage()
+                    "message": record.getMessage(),
                 }
                 return json.dumps(log_record, ensure_ascii=False)
+
         return JsonFormatter()
-
-
 
     def _get_xml_formatter(self):
         """インデント付きのXML形式でログをフォーマットする"""
+
         class XmlFormatter(logging.Formatter):
             def format(self, record):
                 # ログエントリを作成
                 log_entry = ET.Element("entry")
-                
+
                 timestamp = ET.SubElement(log_entry, "timestamp")
                 timestamp.text = self.formatTime(record, self.datefmt)
-                
+
                 name = ET.SubElement(log_entry, "name")
                 name.text = record.name
-                
+
                 level = ET.SubElement(log_entry, "level")
                 level.text = record.levelname
-                
+
                 message = ET.SubElement(log_entry, "message")
                 message.text = record.getMessage()
 
                 # ElementTreeのXMLを文字列に変換し、minidomで整形
                 rough_string = ET.tostring(log_entry, encoding="unicode")
                 reparsed = xml.dom.minidom.parseString(rough_string)
-                
+
                 # 整形されたXMLを返す（インデント付き）
                 return reparsed.toprettyxml(indent="  ")
 
         return XmlFormatter()
-
 
     def info(self, message):
         """INFOレベルのログを記録"""

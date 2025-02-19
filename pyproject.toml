@@ -32,5 +32,6 @@ python_files = ["test_*.py"]
 addopts = "-v --tb=short --cov=. --cov-report=html -p no:warnings"
 qt_api = "pyqt6"
 markers = [
-    "gui: marks tests that involve GUI components"
+    "gui: marks tests that involve GUI components",
+    "skip_gui: marks tests to skip in CI environment"
 ]

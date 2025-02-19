@@ -65,3 +65,25 @@ class TestUIOperations:
 
         assert test_dir in copier_app.selected_directories
         assert copier_app.selected_dirs_list.count() == 1
+
+    @pytest.mark.gui
+    def test_directory_drop(self, copier_app, tmp_path):
+        """ドラッグ＆ドロップのテスト"""
+        test_dir = str(tmp_path)
+
+        # ドロップをシミュレート
+        copier_app.selected_dirs_list.addDirectory(test_dir)
+
+        assert test_dir in copier_app.selected_directories
+        assert copier_app.selected_dirs_list.count() == 1
+
+    @pytest.mark.gui
+    def test_error_handling(self, copier_app):
+        """エラーハンドリングのテスト"""
+        error_message = "Test error"
+
+        # エラーハンドリングをシミュレート
+        copier_app.handleError("test.txt", 1, 3, error_message)
+
+        # ステータスバーにエラーメッセージが表示されることを確認
+        assert error_message in copier_app.statusBar().currentMessage()
