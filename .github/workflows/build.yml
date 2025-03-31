@@ -1,82 +1,182 @@
-name: Build and Release Windows Executable
+name: Build and Release Cross-Platform Executables
 
 on:
   push:
     branches:
-      - main # mainブランチへのプッシュ時に実行 (タグトリガーから変更)
-    paths-ignore: # ドキュメント変更のみの場合は実行しない (任意)
+      - main # mainブランチへのプッシュ時に実行
+    paths-ignore:
       - '**.md'
       - '.gitignore'
 
 jobs:
-  build_and_release:
-    name: Build and Release for Windows
-    runs-on: windows-latest
+  tagging:
+    name: Determine Version and Tag
+    runs-on: ubuntu-latest # タグ付けはどのOSでもOK
+    outputs:
+      new_tag: ${{ steps.tag_version.outputs.new_tag }} # 他のジョブから参照できるようにタグ名を出力
     permissions:
-      contents: write  # タグ作成とリリース作成に必要な権限
-
+      contents: write # タグ作成・プッシュに必要
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-      with:
-        fetch-depth: 0 # タグ取得のために全履歴をフェッチ
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # タグ取得のために全履歴をフェッチ
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
+      - name: Determine next version and tag
+        id: tag_version
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { data: tags } = await github.rest.repos.listTags({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
 
-    - name: Install dependencies
-      run: pip install -r requirements.txt
-
-    - name: Build executable
-      run: pyinstaller --name copyMan_v4 --onefile --windowed cp_man_v4.py
-
-    - name: Determine next version and tag
-      id: tag_version # このステップの出力を参照するためのID
-      uses: actions/github-script@v6
-      with:
-        script: |
-          const { data: tags } = await github.rest.repos.listTags({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-          });
-
-          let latestTag = 'v0.0.0';
-          for (const tag of tags) {
-            if (tag.name.match(/^v0\.0\.\d+$/)) {
-              if (tag.name > latestTag) { // 文字列比較でOK (v0.0.x)
-                latestTag = tag.name;
+            let latestTag = 'v0.0.0';
+            for (const tag of tags) {
+              if (tag.name.match(/^v0\.0\.\d+$/)) {
+                // バージョン番号を数値として比較するためにパース
+                const currentPatch = parseInt(tag.name.split('.')[2]);
+                const latestPatch = parseInt(latestTag.split('.')[2]);
+                if (currentPatch > latestPatch) {
+                  latestTag = tag.name;
+                }
               }
             }
-          }
 
-          const currentVersion = latestTag.split('.')[2];
-          const nextVersion = parseInt(currentVersion) + 1;
-          const newTag = `v0.0.${nextVersion}`;
-          console.log(`Next version tag: ${newTag}`);
-          core.setOutput('new_tag', newTag); // 後続ステップで使えるように出力
+            const currentVersion = latestTag.split('.')[2];
+            const nextVersion = parseInt(currentVersion) + 1;
+            const newTag = `v0.0.${nextVersion}`;
+            console.log(`Next version tag: ${newTag}`);
+            core.setOutput('new_tag', newTag);
 
-          // 新しいタグを作成してプッシュ
-          await github.rest.git.createRef({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            ref: `refs/tags/${newTag}`,
-            sha: context.sha
-          });
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+            // 新しいタグを作成してプッシュ
+            try {
+              await github.rest.git.createRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `refs/tags/${newTag}`,
+                sha: context.sha
+              });
+              console.log(`Tag ${newTag} created and pushed.`);
+            } catch (error) {
+              console.error(`Failed to create tag: ${error.message}`);
+              // タグ作成失敗時の処理（必要に応じて）
+              // 例えば、既にタグが存在する場合など
+              // ここではエラーを出力するに留める
+            }
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Create Release
-      id: create_release
-      uses: softprops/action-gh-release@v1
-      # if: startsWith(github.ref, 'refs/tags/') # <- この条件を削除
-      with:
-        tag_name: ${{ steps.tag_version.outputs.new_tag }} # 自動生成したタグ名を使用
-        name: Release ${{ steps.tag_version.outputs.new_tag }}
-        body: "Automated release based on commit to main branch."
-        draft: false
-        prerelease: false
-        files: |
-          dist/copyMan_v4.exe
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  build_windows:
+    name: Build for Windows
+    needs: tagging # taggingジョブの完了を待つ
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Build executable (.exe)
+        run: pyinstaller --name copyMan_v4 --onefile --windowed cp_man_v4.py
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: copyMan_v4-windows
+          path: dist/copyMan_v4.exe
+
+  build_macos:
+    name: Build for macOS
+    needs: tagging
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        # PyQt6はmacOSでは追加のシステムライブラリが必要な場合があるが、通常はpipでOK
+        run: pip install -r requirements.txt
+
+      - name: Build application bundle (.app)
+        # --onedir と --windowed で .app バンドルを作成
+        run: pyinstaller --name copyMan_v4 --windowed --onedir cp_man_v4.py
+
+      - name: Zip artifact
+        # .app ディレクトリをzip圧縮する
+        run: ditto -c -k --sequesterRsrc --keepParent dist/copyMan_v4.app dist/copyMan_v4-macos.zip
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: copyMan_v4-macos-zip
+          path: dist/copyMan_v4-macos.zip
+
+  build_linux:
+    name: Build for Linux
+    needs: tagging
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        # PyQt6はLinuxではシステムライブラリが必要な場合が多い
+        run: |
+          sudo apt-get update && sudo apt-get install -y libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-shape0 libxkbcommon-x11-0 libgl1
+          pip install -r requirements.txt
+
+      - name: Build executable
+        run: pyinstaller --name copyMan_v4 --onefile --windowed cp_man_v4.py
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: copyMan_v4-linux
+          path: dist/copyMan_v4 # Linuxでは拡張子なしが一般的
+
+  release:
+    name: Create GitHub Release
+    needs: [tagging, build_windows, build_macos, build_linux] # すべてのビルド完了を待つ
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # リリース作成に必要
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts # 全アーティファクトを artifacts ディレクトリにダウンロード
+
+      - name: List downloaded artifacts # 確認用 (任意)
+        run: ls -R artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.tagging.outputs.new_tag }} # taggingジョブからタグ名を取得
+          name: Release ${{ needs.tagging.outputs.new_tag }}
+          body: "Automated cross-platform release based on commit to main branch."
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/copyMan_v4-windows/copyMan_v4.exe
+            artifacts/copyMan_v4-macos-zip/copyMan_v4-macos.zip
+            artifacts/copyMan_v4-linux/copyMan_v4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
