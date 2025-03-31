@@ -1,21 +1,28 @@
-name: Build
+name: Build and Release Windows Executable
 
 on:
   push:
-    tags:
-      - 'v*'  # タグがプッシュされた時に実行
+    branches:
+      - main # mainブランチへのプッシュ時に実行 (タグトリガーから変更)
+    paths-ignore: # ドキュメント変更のみの場合は実行しない (任意)
+      - '**.md'
+      - '.gitignore'
 
 jobs:
-  build:
+  build_and_release:
+    name: Build and Release for Windows
     runs-on: windows-latest
     permissions:
-      contents: write  # リリース作成に必要な権限を追加
+      contents: write  # タグ作成とリリース作成に必要な権限
 
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0 # タグ取得のために全履歴をフェッチ
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: '3.11'
 
@@ -25,16 +32,50 @@ jobs:
     - name: Build executable
       run: pyinstaller --name copyMan_v4 --onefile --windowed cp_man_v4.py
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v2
+    - name: Determine next version and tag
+      id: tag_version # このステップの出力を参照するためのID
+      uses: actions/github-script@v6
       with:
-        name: copyMan_v4
-        path: dist/copyMan_v4.exe
+        script: |
+          const { data: tags } = await github.rest.repos.listTags({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+          });
+
+          let latestTag = 'v0.0.0';
+          for (const tag of tags) {
+            if (tag.name.match(/^v0\.0\.\d+$/)) {
+              if (tag.name > latestTag) { // 文字列比較でOK (v0.0.x)
+                latestTag = tag.name;
+              }
+            }
+          }
+
+          const currentVersion = latestTag.split('.')[2];
+          const nextVersion = parseInt(currentVersion) + 1;
+          const newTag = `v0.0.${nextVersion}`;
+          console.log(`Next version tag: ${newTag}`);
+          core.setOutput('new_tag', newTag); // 後続ステップで使えるように出力
+
+          // 新しいタグを作成してプッシュ
+          await github.rest.git.createRef({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            ref: `refs/tags/${newTag}`,
+            sha: context.sha
+          });
+        github-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Create Release
+      id: create_release
       uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'refs/tags/')
+      # if: startsWith(github.ref, 'refs/tags/') # <- この条件を削除
       with:
+        tag_name: ${{ steps.tag_version.outputs.new_tag }} # 自動生成したタグ名を使用
+        name: Release ${{ steps.tag_version.outputs.new_tag }}
+        body: "Automated release based on commit to main branch."
+        draft: false
+        prerelease: false
         files: |
           dist/copyMan_v4.exe
       env:
