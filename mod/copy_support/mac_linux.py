@@ -1,4 +1,5 @@
 import subprocess
+import os
 from typing import Callable
 
 
@@ -21,15 +22,21 @@ class MacLinuxCopy:
         rsyncコマンドを実行してファイルをコピーする
 
         Parameters:
-        src (str): コピー元ディレクトリ
+        src (str): コピー元ディレクトリまたはファイル
         dest (str): コピー先ディレクトリ
 
         Returns:
         int: rsyncの終了コード
         """
+        # srcがディレクトリの場合、rsyncのために末尾にスラッシュを追加
+        if os.path.isdir(src):
+             src_path = os.path.join(src, '') # os.path.joinで安全にスラッシュを追加
+        else:
+             src_path = src
+
         # -a: アーカイブモード (パーミッション、シンボリックリンク、タイムスタンプなどを保持)
         # -E: 拡張属性も含めてコピー (macOS向け)
-        command = ["rsync", "-a", "-E", src, dest]
+        command = ["rsync", "-a", "-E", src_path, dest] # 変更: src -> src_path
 
         try:
             result = subprocess.run(command, check=True, capture_output=True, text=True)

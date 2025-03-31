@@ -78,33 +78,45 @@
 
 ### 環境構築
 
-1. **Poetryのインストール:**
+1.  **Python仮想環境の作成:**
+    プロジェクトのルートディレクトリで以下のコマンドを実行し、仮想環境を作成します。
     ```bash
-    curl -sSL https://install.python-poetry.org | python3 -
+    python -m venv venv
     ```
 
-2. **依存関係のインストール:**
+2.  **仮想環境の有効化:**
+    -   **Windows:**
+        ```bash
+        .\\venv\\Scripts\\activate
+        ```
+    -   **macOS/Linux:**
+        ```bash
+        source venv/bin/activate
+        ```
+
+3.  **依存関係のインストール:**
+    作成した仮想環境内で、以下のコマンドを実行して必要なライブラリをインストールします。
     ```bash
-    poetry install
+    pip install -r requirements.txt
     ```
 
 ### テスト実行
 
-テストは以下の3つの方法で実行できます：
+テストは以下の3つの方法で実行できます（仮想環境が有効化されていることを確認してください）：
 
-1. **全てのテストを実行:**
+1.  **全てのテストを実行:**
     ```bash
-    poetry run pytest
+    pytest
     ```
 
-2. **GUIテストを除外して実行:**
+2.  **GUIテストを除外して実行:**
     ```bash
-    poetry run pytest -m "not gui"
+    pytest -m "not gui"
     ```
 
-3. **GUIテストのみ実行:**
+3.  **GUIテストのみ実行:**
     ```bash
-    poetry run pytest -m gui
+    pytest -m gui
     ```
 
 テスト実行後、`htmlcov/index.html`にカバレッジレポートが生成されます。

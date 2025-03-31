@@ -14,16 +14,16 @@ jobs:
       with:
         python-version: '3.11'
     
-    - name: Install Poetry
-      run: |
-        curl -sSL https://install.python-poetry.org | python3 -
-    
     - name: Install dependencies
-      run: poetry install
+      run: pip install -r requirements.txt
     
-    - name: Run tests (excluding GUI tests)
-      run: poetry run pytest -m "not gui"
+    - name: Run tests (excluding GUI tests) and generate coverage
+      run: pytest --cov=./ --cov-report=xml -m "not gui"
     
-    - name: Upload coverage reports
+    - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3
+      with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          fail_ci_if_error: true
       if: success() 

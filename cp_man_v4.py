@@ -334,6 +334,7 @@ class DirectoryCopierApp(QWidget):
     def copyFinished(self):
         self.status_bar.showMessage("ディレクトリのコピーが完了しました。")
         self.cancel_button.setEnabled(False)
+        self.copy_thread = None
         QMessageBox.information(self, "完了", "ディレクトリのコピーが完了しました。")
 
     def saveHistory(self):
