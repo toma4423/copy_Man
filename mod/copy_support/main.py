@@ -1,6 +1,7 @@
 import os
 import platform
 from typing import Callable
+from pathlib import Path
 
 # プラットフォームによって異なるモジュールをインポート
 if platform.system() == "Windows":
@@ -37,7 +38,7 @@ class CopyManager:
         src (str): コピー元のパス
         dest (str): コピー先のパス
         """
-        if not os.path.exists(src):
+        if not Path(src).exists():
             raise FileNotFoundError(f"コピー元のパスが見つかりません: {src}")
 
         self.copy_handler.copy(src, dest)

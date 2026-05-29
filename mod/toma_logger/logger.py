@@ -4,6 +4,7 @@ import json
 import xml.etree.ElementTree as ET
 import xml.dom.minidom
 from logging.handlers import TimedRotatingFileHandler
+from pathlib import Path
 
 
 class TomaLogger:
@@ -19,8 +20,9 @@ class TomaLogger:
         self.log_file = log_name  # テスト用に追加
 
         # ログディレクトリとファイルのパスを正しく結合
-        if not os.path.exists(log_dir):
-            os.makedirs(log_dir)
+        log_path = Path(log_dir)
+        if not log_path.exists():
+            log_path.mkdir(parents=True, exist_ok=True)
 
         # ログのフォーマットを選択
         if log_format == "json":
@@ -34,7 +36,7 @@ class TomaLogger:
 
         # ログファイルを日ごとにローテーション (エンコーディング指定)
         file_handler = TimedRotatingFileHandler(
-            os.path.join(log_dir, log_name),
+            str(log_path / log_name),
             when="D",
             interval=1,
             backupCount=7,
