@@ -1,6 +1,8 @@
 import subprocess
 import os
+import platform
 from typing import Callable
+from pathlib import Path
 
 
 class MacLinuxCopy:
@@ -28,15 +30,19 @@ class MacLinuxCopy:
         Returns:
         int: rsyncの終了コード
         """
+        src_p = Path(src)
         # srcがディレクトリの場合、rsyncのために末尾にスラッシュを追加
-        if os.path.isdir(src):
-             src_path = os.path.join(src, '') # os.path.joinで安全にスラッシュを追加
+        if src_p.is_dir():
+             src_path = str(src_p) + '/'
         else:
-             src_path = src
+             src_path = str(src_p)
 
         # -a: アーカイブモード (パーミッション、シンボリックリンク、タイムスタンプなどを保持)
-        # -E: 拡張属性も含めてコピー (macOS向け)
-        command = ["rsync", "-a", "-E", src_path, dest] # 変更: src -> src_path
+        # macOSでは-E (extended attributes, ACLs), Linuxでは-X (extended attributes) を使用
+        if platform.system() == "Darwin":
+            command = ["rsync", "-a", "-E", src_path, dest]
+        else:
+            command = ["rsync", "-a", "-X", src_path, dest]
 
         try:
             result = subprocess.run(command, check=True, capture_output=True, text=True)

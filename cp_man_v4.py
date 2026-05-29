@@ -22,6 +22,7 @@ from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from mod.copy_support.main import CopyManager
 from mod.toma_logger.logger import TomaLogger
 import concurrent.futures
+from pathlib import Path
 
 
 # ロガーを初期化 (ログフォーマットやログディレクトリなどを指定)
@@ -43,7 +44,7 @@ class CopyThread(QThread):
 
     def run(self):
         try:
-            total_dirs = len(self.src_dirs)
+            dest_dir_path = Path(self.dest_dir)
             if self.parallel_copy:
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     futures = []
@@ -53,10 +54,9 @@ class CopyThread(QThread):
                             logger.info("Copy canceled by user.")
                             break
 
-                        dest_path = os.path.join(
-                            self.dest_dir, os.path.basename(src_dir)
-                        )
-                        if os.path.exists(dest_path):
+                        src_path = Path(src_dir)
+                        dest_path = dest_dir_path / src_path.name
+                        if dest_path.exists():
                             self.progress.emit(
                                 f"Skipping {src_dir}: already exists in destination."
                             )
@@ -66,7 +66,7 @@ class CopyThread(QThread):
                         self.progress.emit(f"Copying {src_dir} to {dest_path}")
                         logger.info(f"Copying {src_dir} to {dest_path}")
                         futures.append(
-                            executor.submit(self.copy_manager.copy, src_dir, dest_path)
+                            executor.submit(self.copy_manager.copy, str(src_path), str(dest_path))
                         )
 
                     for future in concurrent.futures.as_completed(futures):
@@ -78,8 +78,9 @@ class CopyThread(QThread):
                         logger.info("Copy canceled by user.")
                         break
 
-                    dest_path = os.path.join(self.dest_dir, os.path.basename(src_dir))
-                    if os.path.exists(dest_path):
+                    src_path = Path(src_dir)
+                    dest_path = dest_dir_path / src_path.name
+                    if dest_path.exists():
                         self.progress.emit(
                             f"Skipping {src_dir}: already exists in destination."
                         )
@@ -88,7 +89,7 @@ class CopyThread(QThread):
 
                     self.progress.emit(f"Copying {src_dir} to {dest_path}")
                     logger.info(f"Copying {src_dir} to {dest_path}")
-                    self.copy_manager.copy(src_dir, dest_path)
+                    self.copy_manager.copy(str(src_path), str(dest_path))
 
             self.finished.emit()
             logger.info("Copy operation completed.")
@@ -111,6 +112,8 @@ class CopyThread(QThread):
 
 
 class DroppableQListWidget(QListWidget):
+    itemsDropped = pyqtSignal(list)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAcceptDrops(True)
@@ -128,14 +131,14 @@ class DroppableQListWidget(QListWidget):
 
     def dropEvent(self, event):
         urls = event.mimeData().urls()
+        dropped_paths = []
         for url in urls:
             directory = url.toLocalFile()
-            if os.path.isdir(directory):
-                # 既にリストに存在するかチェック (修正)
-                if directory not in self.existing_items:
-                    item = QListWidgetItem(directory)
-                    self.addItem(item)
-                    self.existing_items.append(directory)  # 追加
+            if Path(directory).is_dir():
+                dropped_paths.append(directory)
+
+        if dropped_paths:
+            self.itemsDropped.emit(dropped_paths)
         event.acceptProposedAction()
 
 
@@ -145,7 +148,7 @@ class DirectoryCopierApp(QWidget):
         self.setAcceptDrops(True)
         self.initUI()
         self.selected_directories = []
-        self.history_file = "directory_selection_history.json"
+        self.history_file = Path("directory_selection_history.json")
         self.copy_thread = None
         self.parallel_copy = False
 
@@ -164,6 +167,7 @@ class DirectoryCopierApp(QWidget):
             Qt.ContextMenuPolicy.CustomContextMenu
         )
         self.selected_dirs_list.customContextMenuRequested.connect(self.showContextMenu)
+        self.selected_dirs_list.itemsDropped.connect(self.handleDroppedDirectories)
         top_layout.addWidget(self.selected_dirs_list, 3)
 
         # ディレクトリ選択ボタン
@@ -305,10 +309,10 @@ class DirectoryCopierApp(QWidget):
             self.startCopy()
 
     def startCopy(self):
-        dest_dir = self.dest_dir_display.text()
+        dest_dir = Path(self.dest_dir_display.text())
 
-        if not os.path.exists(dest_dir):
-            os.makedirs(dest_dir)
+        if not dest_dir.exists():
+            dest_dir.mkdir(parents=True, exist_ok=True)
 
         self.copy_thread = CopyThread(
             self.selected_directories, dest_dir, self.parallel_copy
@@ -339,8 +343,8 @@ class DirectoryCopierApp(QWidget):
 
     def saveHistory(self):
         try:
-            with open(self.history_file, "w") as f:
-                json.dump(self.selected_directories, f, indent=4)
+            with self.history_file.open("w", encoding="utf-8") as f:
+                json.dump(self.selected_directories, f, indent=4, ensure_ascii=False)
             QMessageBox.information(self, "保存完了", "履歴が保存されました。")
         except Exception as e:
             QMessageBox.critical(
@@ -349,8 +353,8 @@ class DirectoryCopierApp(QWidget):
 
     def loadHistory(self):
         try:
-            if os.path.exists(self.history_file):
-                with open(self.history_file, "r") as f:
+            if self.history_file.exists():
+                with self.history_file.open("r", encoding="utf-8") as f:
                     self.selected_directories = json.load(f)
                 self.updateSelectedDirsList()
                 QMessageBox.information(
@@ -366,6 +370,20 @@ class DirectoryCopierApp(QWidget):
     def updateSelectedDirsList(self):
         self.selected_dirs_list.clear()
         self.selected_dirs_list.addItems(self.selected_directories)
+        self.selected_dirs_list.existing_items = list(self.selected_directories)
+
+    def handleDroppedDirectories(self, directories):
+        for directory in directories:
+            if directory == self.dest_dir_display.text():
+                QMessageBox.warning(
+                    self,
+                    "警告",
+                    f"コピー先ディレクトリが選択されています: {directory}\n異なるディレクトリを選択してください。",
+                )
+                continue
+            if directory not in self.selected_directories:
+                self.selected_directories.append(directory)
+        self.updateSelectedDirsList()
 
     def toggleParallelCopy(self, state):
         self.parallel_copy = state == Qt.CheckState.Checked
